@@ -4,45 +4,31 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bootstrap 101 Template</title>
+    <title>Fumbler</title>
 
+    <!-- JQuery, Bootstrap -->
     <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
     <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
-
-    <!-- CDNJS -->
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/coffee-script/1.7.1/coffee-script.min.js"></script>
-
-    <style type="text/css" media="screen">
-        #editor {
-          height: 500px;
-          border: 1px solid gray;
-        }
-
-        .container.wide {
-          margin-left: 20px;
-          margin-right: 20px;
-          width: auto;
-        }
-
-        textarea {
-          width: 100%;
-        }
-
-        #output-area {
-          height: 500px;
-        }
-    </style>
-
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
       <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
       <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
     <![endif]-->
+
+
+    <!-- Fumbler -->
+    <script src="main.js"></script>
+    <link rel="stylesheet" type="text/css" href="main.css">
+
+
+    <!-- CDNJS -->
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/coffee-script/1.7.1/coffee-script.min.js"></script>
+
   </head>
   <body>
 
@@ -53,7 +39,13 @@
           <textarea id="input-area" spellcheck="false"></textarea>
         </div>
         <div class="col-md-6">
-          <h3>Libs</h3>
+          <h3>Libraries</h3>
+          <ul>
+            <li>jQuery</li>
+            <li>Lodash</li>
+          </ul>
+          <input type="textbox" placeholder="URL" />
+          <a class="btn btn-default" href="#">Add script</a>
         </div>
       </div>
 
@@ -63,71 +55,11 @@
           <div id="editor">// your code</div>
         </div>
         <div class="col-md-6">
-          <h3>HTML output</h3>
+          <h3>Output</h3>
           <textarea id="output-area" spellcheck="false"></textarea>
-
         </div>
       </div>
     </div>
-
-    <script type="text/javascript">
-      var editor = ace.edit("editor");
-      var inputArea = $("#input-area");
-      var outputArea = $("#output-area");
-
-      editor.commands.addCommand({
-          name: "uncollapse",
-          bindKey: {
-              win: "Ctrl-Alt-0"
-          },
-          exec: function(editor, line) {
-              return false;
-          },
-          readOnly: true
-      })
-
-
-      // editor.setTheme("ace/theme/monokai");
-      editor.getSession().setMode("ace/mode/javascript");
-
-      window.input = localStorage.getItem("fiddlerInput");
-
-      // restore values
-      editor.setValue(localStorage.getItem("fiddlerCode"));
-      inputArea.val(input);
-
-
-      var evalCode = function() {
-        var code = editor.getValue();
-        try {
-          if (!window.noAutoEval)
-            outputArea.val(eval(code));
-        } catch (e) {
-          console.error("an error occured while executing your code",  e)
-        }
-      }
-      var saveCode = function() {
-        var code = editor.getValue();
-        localStorage.setItem("fiddlerCode", code);
-      }
-
-      editor.getSession().on('change', function() {
-        saveCode();
-        evalCode();
-      });
-
-      inputArea.on("input", function() {
-        console.log("yay");
-        window.input = inputArea.val();
-        localStorage.setItem("fiddlerInput", window.input);
-        evalCode();
-      });
-
-
-      evalCode();
-
-    </script>
-
   <body>
 
 

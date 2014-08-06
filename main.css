@@ -1,0 +1,19 @@
+#editor {
+  height: 500px;
+  border: 1px solid gray;
+}
+
+.container.wide {
+  margin-left: 20px;
+  margin-right: 20px;
+  width: auto;
+}
+
+textarea {
+  width: 100%;
+  height: 80px;
+}
+
+#output-area {
+  height: 500px;
+}
