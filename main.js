@@ -1,12 +1,16 @@
 $(document).ready(function() {
-  var editor = ace.edit("editor");
-  var inputArea = $("#input-area");
-  var outputArea = $("#output-area");
-  var errorAlert = $("#error-alert");
+  var editor = ace.edit("editor"),
+      inputArea = $("#input-area"),
+      outputArea = $("#output-area"),
+      errorAlert = $("#error-alert"),
+      autoEvalCheckbox = $("#autoEvalCheckbox"),
+      runBtn = $("#run-btn");
 
   setupEditor();
   setupInputArea();
+  setUpRunButton();
   restoreValues();
+
 
   function setupEditor() {
     editor.commands.addCommand({
@@ -20,15 +24,57 @@ $(document).ready(function() {
         readOnly: true
     });
 
+    editor.commands.addCommand({
+        name: "toggleAutoEval",
+        bindKey: {
+            win: "Esc"
+        },
+        exec: function(editor, line) {
+          console.log("troggle");
+          toggleAutoEval();
+          return false;
+        },
+        readOnly: true
+    });
+
+    editor.commands.addCommand({
+        name: "runCode",
+        bindKey: {
+            win: "CTRL-Enter"
+        },
+        exec: function(editor, line) {
+          saveAndEval();
+          return false;
+        },
+        readOnly: true
+    });
+
     // editor.setTheme("ace/theme/monokai");
     editor.getSession().setMode("ace/mode/javascript");
+    editor.getSession().on('change', onChange);
+  }
 
-    editor.getSession().on('change', saveAndEval);
+  autoEvalCheckbox.on("change", onToggleAutoEval);
+
+  function toggleAutoEval() {
+    autoEvalCheckbox.prop("checked", !isAutoEvalEnabled());
+    onToggleAutoEval();
+  }
+
+  function onToggleAutoEval() {
+    var enabled = autoEvalCheckbox.prop("checked");
+    localStorage.setItem("fumblerAutoEval", enabled);
+  }
+
+  function isAutoEvalEnabled() {
+    return autoEvalCheckbox.prop("checked");
   }
 
   function restoreValues() {
-    var input = localStorage.getItem("fumblerInput");
+    var input = localStorage.getItem("fumblerInput"),
         code  = localStorage.getItem("fumblerCode");
+
+    autoEvalCheckbox.prop("checked", JSON.parse(localStorage.getItem("fumblerAutoEval")));
 
     if (!input && !code) {
       fetchAndLoadExample();
@@ -40,15 +86,15 @@ $(document).ready(function() {
     saveAndEval();
   }
 
-  function evalCode() {
+  function saveAndEval() {
+    save();
+
     // make the input accessible via global namespace,
     // so that the script can access it
     window.input = inputArea.val();
     var code = editor.getValue();
     try {
-      if (!window.noAutoEval) {
-        outputArea.val(eval(code));
-      }
+      outputArea.val(eval(code));
       hideError();
     } catch (e) {
       console.error("an error occured while executing your code",  e)
@@ -61,13 +107,14 @@ $(document).ready(function() {
     localStorage.setItem("fumblerInput", inputArea.val());
   }
 
-  function saveAndEval() {
+  function onChange() {
     save();
-    evalCode();
+    if (isAutoEvalEnabled())
+      saveAndEval();
   }
 
   function setupInputArea() {
-    inputArea.on("input", saveAndEval);
+    inputArea.on("input", onChange);
   }
 
   function showError(err) {
@@ -86,6 +133,13 @@ $(document).ready(function() {
 
   function fetchAndLoadExample() {
     jQuery.get("examples/html-to-coffee-react.json", loadExample, "json");
+  }
+
+  function setUpRunButton() {
+    runBtn.click(saveAndEval);
+    runBtn.tooltip({ title : "Ctrl-Enter" });
+
+    autoEvalCheckbox.parent().tooltip({ title : "Esc" })
   }
 
 });
