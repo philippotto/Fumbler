@@ -19,10 +19,6 @@ textarea {
   height: 500px;
 }
 
-#editor {
+#editor, #output-area {
 	margin-top: 10px;
-}
-
-#output-area {
-	margin-top: 21px;
 }

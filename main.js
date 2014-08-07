@@ -4,7 +4,8 @@ $(document).ready(function() {
       outputArea = $("#output-area"),
       errorAlert = $("#error-alert"),
       autoEvalCheckbox = $("#autoEvalCheckbox"),
-      runBtn = $("#run-btn");
+      runBtn = $("#run-btn"),
+      languageSelect = $("#language-select");
 
   setupEditor();
   setupInputArea();
@@ -75,6 +76,7 @@ $(document).ready(function() {
         code  = localStorage.getItem("fumblerCode");
 
     autoEvalCheckbox.prop("checked", JSON.parse(localStorage.getItem("fumblerAutoEval")));
+    languageSelect.val(localStorage.getItem("fumblerLanguage") || "js");
 
     if (!input && !code) {
       fetchAndLoadExample();
@@ -93,6 +95,17 @@ $(document).ready(function() {
     // so that the script can access it
     window.input = inputArea.val();
     var code = editor.getValue();
+    try {
+      if (languageSelect.val() == "coffee") {
+        code = CoffeeScript.compile(code, {bare : true});
+        console.log("code",  code);
+      }
+    } catch (e) {
+      console.error("an error occured while compiling your code",  e)
+      showError(e);
+      return;
+    }
+
     try {
       outputArea.val(eval(code));
       hideError();
@@ -127,8 +140,10 @@ $(document).ready(function() {
   }
 
   function loadExample(example) {
+    languageSelect.val(example.language);
     inputArea.val(example.input);
     editor.setValue(example.code);
+
   }
 
   function fetchAndLoadExample() {
@@ -141,5 +156,11 @@ $(document).ready(function() {
 
     autoEvalCheckbox.parent().tooltip({ title : "Esc" })
   }
+
+
+
+  languageSelect.change(function() {
+    localStorage.setItem("fumblerLanguage", languageSelect.val());
+  })
 
 });

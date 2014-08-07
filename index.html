@@ -64,9 +64,9 @@
                  </label>
                </div>
 
-              <select class="input-large form-control">
-                <option value="" selected="selected">JavaScript</option>
-                <option value="AL">CoffeeScript</option>
+              <select id="language-select" class="input-large form-control">
+                <option value="js" selected="selected">JavaScript</option>
+                <option value="coffee">CoffeeScript</option>
               </select>
 
               <button type="button" id="run-btn" class="btn btn-primary">
@@ -82,9 +82,14 @@
           <row>
             <form class="form-inline" role="form">
               <div class="checkbox">
-                 <label>
-                   <input id="interpretAsHTMLCheckbox" type="checkbox"> Interpret as HTML
-                 </label>
+                Interpret as:
+                <select id="interpreter-select" class="input-large form-control">
+                  <option value="string" selected="selected">String</option>
+                  <option value="html">HTML</option>
+                  <option value="code">Code</option>
+                  <option value="json">JSON</option>
+                </select>
+
                </div>
             </form>
           </row>
