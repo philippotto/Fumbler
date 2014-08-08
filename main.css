@@ -1,4 +1,4 @@
-#editor {
+.ace-container {
   height: 500px;
   border: 1px solid rgb(169, 169, 169);
 }
@@ -21,4 +21,9 @@ textarea {
 
 #editor, #output-area {
 	margin-top: 10px;
+}
+
+#error-alert {
+  position: absolute;
+  right: 15px;
 }

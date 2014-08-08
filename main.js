@@ -1,19 +1,27 @@
 $(document).ready(function() {
-  var editor = ace.edit("editor"),
+  var codeEditor = ace.edit("code-editor"),
+      htmlEditor = ace.edit("html-editor"),
+      editors = [codeEditor, htmlEditor],
       inputArea = $("#input-area"),
       outputArea = $("#output-area"),
       errorAlert = $("#error-alert"),
       autoEvalCheckbox = $("#autoEvalCheckbox"),
       runBtn = $("#run-btn"),
+      htmlContainer = $("#html-container"),
       languageSelect = $("#language-select");
 
-  setupEditor();
+
+  editors.forEach(setupEditor);
+
   setupInputArea();
   setUpRunButton();
   restoreValues();
 
+  languageSelect.change(onLanguageChange);
+  onLanguageChange();
 
-  function setupEditor() {
+
+  function setupEditor(editor) {
     editor.commands.addCommand({
         name: "uncollapse",
         bindKey: {
@@ -50,9 +58,28 @@ $(document).ready(function() {
         readOnly: true
     });
 
+    if (editor == codeEditor) {
+      editor.commands.addCommand({
+          name: "runSelectedCode",
+          bindKey: {
+              win: "CTRL-e"
+          },
+          exec: function(editor, line) {
+            code = editor.getSelectedText() || line;
+            var result = evalCode(code);
+            // TODO: clearSelection and move the cursor to the end of the old selection
+            editor.insert("" + result);
+            return false;
+          },
+          readOnly: true
+      });
+    }
+
+
+
     // editor.setTheme("ace/theme/monokai");
-    editor.getSession().setMode("ace/mode/javascript");
-    editor.getSession().on('change', onChange);
+    editor.getSession().setMode("ace/mode/html");
+    editor.getSession().on('change', onChange.bind(editor));
   }
 
   autoEvalCheckbox.on("change", onToggleAutoEval);
@@ -65,6 +92,8 @@ $(document).ready(function() {
   function onToggleAutoEval() {
     var enabled = autoEvalCheckbox.prop("checked");
     localStorage.setItem("fumblerAutoEval", enabled);
+    if (enabled)
+      saveAndEval();
   }
 
   function isAutoEvalEnabled() {
@@ -76,14 +105,18 @@ $(document).ready(function() {
         code  = localStorage.getItem("fumblerCode");
 
     autoEvalCheckbox.prop("checked", JSON.parse(localStorage.getItem("fumblerAutoEval")));
-    languageSelect.val(localStorage.getItem("fumblerLanguage") || "js");
+    languageSelect.val(localStorage.getItem("fumblerLanguage") || "javascript");
 
     if (!input && !code) {
       fetchAndLoadExample();
     } else {
       inputArea.val(input);
-      editor.setValue(code);
+      codeEditor.setValue(code);
+      htmlEditor.setValue("<div>Your HTML code</div>")
     }
+
+
+    _.invoke(editors, "clearSelection");
 
     saveAndEval();
   }
@@ -91,24 +124,32 @@ $(document).ready(function() {
   function saveAndEval() {
     save();
 
-    // make the input accessible via global namespace,
-    // so that the script can access it
-    window.input = inputArea.val();
-    var code = editor.getValue();
+    var code = codeEditor.getValue();
+    if (languageSelect.val() == "coffee") {
+      code = transpileCode(code);
+      if (!code) return;
+    }
+
+    outputArea.val(evalCode(code));
+  }
+
+  function transpileCode(code) {
     try {
-      if (languageSelect.val() == "coffee") {
-        code = CoffeeScript.compile(code, {bare : true});
-        console.log("code",  code);
-      }
+        return CoffeeScript.compile(code, {bare : true});
     } catch (e) {
       console.error("an error occured while compiling your code",  e)
       showError(e);
-      return;
+      return null;
     }
+  }
 
+  function evalCode(code) {
     try {
-      outputArea.val(eval(code));
+      // make input available to code
+      var input = inputArea.val();
+      var output = eval(code);
       hideError();
+      return output;
     } catch (e) {
       console.error("an error occured while executing your code",  e)
       showError(e);
@@ -116,14 +157,18 @@ $(document).ready(function() {
   }
 
   function save() {
-    localStorage.setItem("fumblerCode", editor.getValue());
+    localStorage.setItem("fumblerCode", codeEditor.getValue());
     localStorage.setItem("fumblerInput", inputArea.val());
   }
 
   function onChange() {
     save();
-    if (isAutoEvalEnabled())
-      saveAndEval();
+    if (this == codeEditor) {
+      if (isAutoEvalEnabled())
+        saveAndEval();
+    } else {
+      renderHTML();
+    }
   }
 
   function setupInputArea() {
@@ -142,7 +187,8 @@ $(document).ready(function() {
   function loadExample(example) {
     languageSelect.val(example.language);
     inputArea.val(example.input);
-    editor.setValue(example.code);
+    codeEditor.setValue(example.code);
+    htmlEditor.setValue(example.html);
 
   }
 
@@ -158,9 +204,17 @@ $(document).ready(function() {
   }
 
 
+  function renderHTML() {
+    var htmlCode = htmlEditor.getValue();
+    htmlContainer.html(htmlCode);
+  }
 
-  languageSelect.change(function() {
-    localStorage.setItem("fumblerLanguage", languageSelect.val());
-  })
+  function onLanguageChange() {
+    var language = languageSelect.val();
+    localStorage.setItem("fumblerLanguage", language);
+    codeEditor.getSession().setMode("ace/mode/" + language);
+
+    saveAndEval();
+  }
 
 });
