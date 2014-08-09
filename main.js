@@ -8,17 +8,25 @@ $(document).ready(function() {
       autoEvalCheckbox = $("#autoEvalCheckbox"),
       runBtn = $("#run-btn"),
       htmlContainer = $("#html-container"),
-      languageSelect = $("#language-select");
+      languageSelect = $("#language-select"),
+      newSessionBtn = $("new-session-btn");
 
 
   editors.forEach(setupEditor);
-
   setupInputArea();
   setUpRunButton();
   restoreValues();
+  setupUI();
 
-  languageSelect.change(onLanguageChange);
-  onLanguageChange();
+
+
+  function setupUI() {
+    languageSelect.change(onLanguageChange);
+    newSessionBtn.click(newSession);
+
+    // TODO: find a better place?
+    onLanguageChange();
+  }
 
 
   function setupEditor(editor) {
@@ -216,5 +224,30 @@ $(document).ready(function() {
 
     saveAndEval();
   }
+
+
+  function exportSession() {
+    var session = {
+      "input" : inputArea.val(),
+      "code" : codeEditor.getValue(),
+      "language" : languageSelect.val(),
+      "html" : htmlEditor.getValue()
+    };
+
+    // TODO: escape the session for printing ...
+    return session;
+  }
+
+
+  function newSession() {
+    // TODO: get session name
+  }
+
+
+
+  window.exportSession = exportSession;
+
+
+
 
 });
