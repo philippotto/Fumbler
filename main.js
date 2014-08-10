@@ -24,6 +24,15 @@ $(document).ready(function() {
     languageSelect.change(onLanguageChange);
     newSessionBtn.click(newSession);
 
+
+    if (localStorage.getItem("fumblerWelcomeWasClosed")) {
+      closeWelcomeBtn.parent().hide();
+    }
+
+    closeWelcomeBtn.click(function() {
+      localStorage.setItem("fumblerWelcomeWasClosed", true);
+    });
+
     // TODO: find a better place?
     onLanguageChange();
   }
@@ -47,7 +56,6 @@ $(document).ready(function() {
             win: "Esc"
         },
         exec: function(editor, line) {
-          console.log("troggle");
           toggleAutoEval();
           return false;
         },
@@ -110,19 +118,21 @@ $(document).ready(function() {
 
   function restoreValues() {
     var input = localStorage.getItem("fumblerInput"),
-        code  = localStorage.getItem("fumblerCode");
+        code  = localStorage.getItem("fumblerCode"),
+        html  = localStorage.getItem("fumblerHTML");
+
 
     autoEvalCheckbox.prop("checked", JSON.parse(localStorage.getItem("fumblerAutoEval")));
     languageSelect.val(localStorage.getItem("fumblerLanguage") || "javascript");
 
-    if (!input && !code) {
-      fetchAndLoadExample();
-    } else {
+    if (_.any([input, code, html])) {
       inputArea.val(input);
       codeEditor.setValue(code);
-      htmlEditor.setValue("<div>Your HTML code</div>")
+      htmlEditor.setValue(html);
+      htmlEditor.setValue("<div>Your HTML code</div>");
+    } else {
+      fetchAndLoadExample();
     }
-
 
     _.invoke(editors, "clearSelection");
 
@@ -143,9 +153,9 @@ $(document).ready(function() {
 
   function transpileCode(code) {
     try {
-        return CoffeeScript.compile(code, {bare : true});
+      return CoffeeScript.compile(code, {bare : true});
     } catch (e) {
-      console.error("an error occured while compiling your code",  e)
+      console.warn("an error occured while compiling your code",  e)
       showError(e);
       return null;
     }
@@ -197,7 +207,6 @@ $(document).ready(function() {
     inputArea.val(example.input);
     codeEditor.setValue(example.code);
     htmlEditor.setValue(example.html);
-
   }
 
   function fetchAndLoadExample() {
