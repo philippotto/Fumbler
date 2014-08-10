@@ -40,7 +40,7 @@ $(document).ready(function() {
       return _.max(this.db.sessions, "id");
     }
 
-    SessionHandler.prototype.deleteActiveSession = function() {
+    SessionHandler.prototype.deleteCurrentSession = function() {
       delete this.db.sessions[this.db.currentSessionID];
       this.save();
     }
@@ -180,18 +180,18 @@ $(document).ready(function() {
 
     if (editor == ui.codeEditor) {
       editor.commands.addCommand({
-          name: "runSelectedCode",
-          bindKey: {
-              win: "CTRL-e"
-          },
-          exec: function(editor, line) {
-            code = editor.getSelectedText() || line;
-            var result = evalCode(code);
-            // TODO: clearSelection and move the cursor to the end of the old selection
-            editor.insert("" + result);
-            return false;
-          },
-          readOnly: true
+        name: "runSelectedCode",
+        bindKey: {
+            win: "CTRL-e"
+        },
+        exec: function(editor, line) {
+          code = editor.getSelectedText() || line;
+          var result = evalCode(code);
+          // TODO: clearSelection and move the cursor to the end of the old selection
+          editor.insert("" + result);
+          return false;
+        },
+        readOnly: true
       });
     }
 
@@ -245,7 +245,21 @@ $(document).ready(function() {
       if (!code) return;
     }
 
-    ui.outputArea.val(evalCode(code));
+    var result = evalCode(code);
+    var formattedResult = formatValue(result);
+
+    ui.outputArea.val(formattedResult);
+  }
+
+  function formatValue(val) {
+    if (_.isObject(val)) {
+      // TODO: find a tree viewer like component to display objects
+      try {
+        return JSON.stringify(val);
+      } catch (ex) {}
+    }
+
+    return val;
   }
 
   function transpileCode(code) {
@@ -260,7 +274,7 @@ $(document).ready(function() {
 
   function evalCode(code) {
     try {
-      // make input available to code
+      // make input variable available to code
       var input = ui.inputArea.val();
       var output = eval(code);
       hideError();
