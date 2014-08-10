@@ -1,35 +1,139 @@
 $(document).ready(function() {
-  var codeEditor = ace.edit("code-editor"),
-      htmlEditor = ace.edit("html-editor"),
-      editors = [codeEditor, htmlEditor],
-      inputArea = $("#input-area"),
-      outputArea = $("#output-area"),
-      errorAlert = $("#error-alert"),
-      autoEvalCheckbox = $("#autoEvalCheckbox"),
-      runBtn = $("#run-btn"),
-      htmlContainer = $("#html-container"),
-      languageSelect = $("#language-select"),
-      newSessionBtn = $("new-session-btn");
+
+  var SessionHandler = (function() {
+    function SessionHandler() {}
+
+    SessionHandler.prototype.settings = function(attr, value) {
+      if (arguments.length > 1) {
+        this.db.settings[attr] = value;
+        this.save();
+      } else {
+        return this.db.settings[attr];
+      }
+    };
+
+    SessionHandler.prototype.createSession = function(aSession) {
+      var newSession;
+      if (aSession) {
+        newSession = aSession;
+      } else {
+        newSession = {
+          id : this.getHighestID() + 1,
+          name : "Untitled",
+          code : "Your code", html : "Your html", css : "", input : "Your input", language : "javascript"
+        };
+      }
+
+      this.db.sessions[newSession.id] = newSession;
+      this.visitSession(newSession.id);
+      this.save();
+    };
+
+    SessionHandler.prototype.visitSession = function(sessionID) {
+      this.db.currentSessionID = sessionID;
+      this.save();
+    }
+
+    SessionHandler.prototype.getHighestID = function() {
+      if (_.size(this.db.sessions) == 0)
+        return 0;
+      return _.max(this.db.sessions, "id");
+    }
+
+    SessionHandler.prototype.deleteActiveSession = function() {
+      delete this.db.sessions[this.db.currentSessionID];
+      this.save();
+    }
+
+    SessionHandler.prototype.getCurrentSession = function() {
+      return this.db.sessions[this.db.currentSessionID];
+    }
+
+    SessionHandler.prototype.saveCurrentSession = function() {
+      var s = this.getCurrentSession();
+
+      s.code = ui.codeEditor.getValue();
+      s.html = ui.htmlEditor.getValue();
+      s.input = ui.inputArea.val();
+      s.language = ui.languageSelect.val();
+      this.save();
+    }
+
+    SessionHandler.prototype.save = function() {
+      localStorage.setItem("fumblerDB", JSON.stringify(this.db));
+    }
+
+    SessionHandler.prototype.load = function() {
+      this.db = JSON.parse(localStorage.getItem("fumblerDB"));
+
+      if (this.db)
+        return jQuery.Deferred().resolve();
+
+      this.db = {
+        currentSessionID : 0,
+        sessions : {},
+        settings : {
+          autoEval : true
+        }
+      };
+
+      var promise = new jQuery.Deferred();
+      var _this = this;
+      jQuery.get("examples/html-to-coffee-react.json", "json").then(function success(example) {
+        _this.createSession(example);
+        promise.resolve();
+      }, function fail() {
+        _this.createSession();
+        promise.resolve();
+      });
+
+      return promise;
+    }
+
+    SessionHandler.prototype.exportSession = function() {
+      // TODO: escape the session for printing ...
+      return this.getCurrentSession();
+    }
+
+    return SessionHandler;
+  })();
 
 
-  editors.forEach(setupEditor);
-  setupInputArea();
-  setUpRunButton();
-  restoreValues();
-  setupUI();
+  var ui = {
+    codeEditor : ace.edit("code-editor"),
+    htmlEditor : ace.edit("html-editor"),
+    inputArea : $("#input-area"),
+    outputArea : $("#output-area"),
+    errorAlert : $("#error-alert"),
+    autoEvalCheckbox : $("#autoEvalCheckbox"),
+    runBtn : $("#run-btn"),
+    htmlContainer : $("#html-container"),
+    languageSelect : $("#language-select"),
+    closeWelcomeBtn : $("#close-welcome-btn"),
+    newSessionBtn : $("#new-session-btn")
+  };
+  ui.editors = [ui.codeEditor, ui.htmlEditor];
+
+  var sessionHandler = new SessionHandler();
+
+  sessionHandler.load().then(function() {
+    ui.editors.forEach(setupEditor);
+    setUpRunButton();
+    restoreValues();
+    setupUI();
+    addChangeListener();
+  });
 
 
 
   function setupUI() {
-    languageSelect.change(onLanguageChange);
-    newSessionBtn.click(newSession);
-
+    // ui.newSessionBtn.click(newSession);
 
     if (localStorage.getItem("fumblerWelcomeWasClosed")) {
-      closeWelcomeBtn.parent().hide();
+      ui.closeWelcomeBtn.parent().hide();
     }
 
-    closeWelcomeBtn.click(function() {
+    ui.closeWelcomeBtn.click(function() {
       localStorage.setItem("fumblerWelcomeWasClosed", true);
     });
 
@@ -74,7 +178,7 @@ $(document).ready(function() {
         readOnly: true
     });
 
-    if (editor == codeEditor) {
+    if (editor == ui.codeEditor) {
       editor.commands.addCommand({
           name: "runSelectedCode",
           bindKey: {
@@ -91,64 +195,57 @@ $(document).ready(function() {
       });
     }
 
-
-
     // editor.setTheme("ace/theme/monokai");
     editor.getSession().setMode("ace/mode/html");
-    editor.getSession().on('change', onChange.bind(editor));
   }
 
-  autoEvalCheckbox.on("change", onToggleAutoEval);
+  function addChangeListener() {
+    ui.inputArea.on("input", onChange);
+    ui.editors.map(function(editor) {
+      editor.getSession().on('change', onChange.bind(editor));
+    });
+    ui.autoEvalCheckbox.change(onToggleAutoEval);
+    ui.languageSelect.change(onLanguageChange);
+  }
+
 
   function toggleAutoEval() {
-    autoEvalCheckbox.prop("checked", !isAutoEvalEnabled());
+    ui.autoEvalCheckbox.prop("checked", !sessionHandler.settings("autoEval"));
     onToggleAutoEval();
   }
 
   function onToggleAutoEval() {
-    var enabled = autoEvalCheckbox.prop("checked");
-    localStorage.setItem("fumblerAutoEval", enabled);
+    var enabled = ui.autoEvalCheckbox.prop("checked");
+    sessionHandler.settings("autoEval", enabled);
     if (enabled)
       saveAndEval();
   }
 
-  function isAutoEvalEnabled() {
-    return autoEvalCheckbox.prop("checked");
-  }
-
   function restoreValues() {
-    var input = localStorage.getItem("fumblerInput"),
-        code  = localStorage.getItem("fumblerCode"),
-        html  = localStorage.getItem("fumblerHTML");
+    var currentSession = sessionHandler.getCurrentSession();
 
+    ui.autoEvalCheckbox.prop("checked", sessionHandler.settings("autoEval"));
+    ui.languageSelect.val(currentSession.language);
 
-    autoEvalCheckbox.prop("checked", JSON.parse(localStorage.getItem("fumblerAutoEval")));
-    languageSelect.val(localStorage.getItem("fumblerLanguage") || "javascript");
+    ui.inputArea.val(currentSession.input);
+    ui.codeEditor.setValue(currentSession.code);
+    ui.htmlEditor.setValue(currentSession.html);
 
-    if (_.any([input, code, html])) {
-      inputArea.val(input);
-      codeEditor.setValue(code);
-      htmlEditor.setValue(html);
-      htmlEditor.setValue("<div>Your HTML code</div>");
-    } else {
-      fetchAndLoadExample();
-    }
-
-    _.invoke(editors, "clearSelection");
+    _.invoke(ui.editors, "clearSelection");
 
     saveAndEval();
   }
 
   function saveAndEval() {
-    save();
+    sessionHandler.saveCurrentSession();
 
-    var code = codeEditor.getValue();
-    if (languageSelect.val() == "coffee") {
+    var code = ui.codeEditor.getValue();
+    if (ui.languageSelect.val() == "coffee") {
       code = transpileCode(code);
       if (!code) return;
     }
 
-    outputArea.val(evalCode(code));
+    ui.outputArea.val(evalCode(code));
   }
 
   function transpileCode(code) {
@@ -164,99 +261,56 @@ $(document).ready(function() {
   function evalCode(code) {
     try {
       // make input available to code
-      var input = inputArea.val();
+      var input = ui.inputArea.val();
       var output = eval(code);
       hideError();
       return output;
     } catch (e) {
-      console.error("an error occured while executing your code",  e)
+      console.warn("an error occured while executing your code",  e)
       showError(e);
     }
   }
 
-  function save() {
-    localStorage.setItem("fumblerCode", codeEditor.getValue());
-    localStorage.setItem("fumblerInput", inputArea.val());
-  }
 
   function onChange() {
-    save();
-    if (this == codeEditor) {
-      if (isAutoEvalEnabled())
+    sessionHandler.saveCurrentSession();
+    if (this == ui.codeEditor) {
+      if (sessionHandler.settings("autoEval"))
         saveAndEval();
     } else {
       renderHTML();
     }
   }
 
-  function setupInputArea() {
-    inputArea.on("input", onChange);
-  }
-
   function showError(err) {
-    errorAlert.text("JavaScript exception: " + err);
-    errorAlert.show();
+    ui.errorAlert.text("JavaScript exception: " + err);
+    ui.errorAlert.show();
   }
 
   function hideError() {
-    errorAlert.hide();
-  }
-
-  function loadExample(example) {
-    languageSelect.val(example.language);
-    inputArea.val(example.input);
-    codeEditor.setValue(example.code);
-    htmlEditor.setValue(example.html);
-  }
-
-  function fetchAndLoadExample() {
-    jQuery.get("examples/html-to-coffee-react.json", loadExample, "json");
+    ui.errorAlert.hide();
   }
 
   function setUpRunButton() {
-    runBtn.click(saveAndEval);
-    runBtn.tooltip({ title : "Ctrl-Enter" });
+    ui.runBtn.click(saveAndEval);
+    ui.runBtn.tooltip({ title : "Ctrl-Enter" });
 
-    autoEvalCheckbox.parent().tooltip({ title : "Esc" })
+    ui.autoEvalCheckbox.parent().tooltip({ title : "Esc" })
   }
 
 
   function renderHTML() {
-    var htmlCode = htmlEditor.getValue();
-    htmlContainer.html(htmlCode);
+    var htmlCode = ui.htmlEditor.getValue();
+    ui.htmlContainer.html(htmlCode);
   }
 
   function onLanguageChange() {
-    var language = languageSelect.val();
+    var language = ui.languageSelect.val();
     localStorage.setItem("fumblerLanguage", language);
-    codeEditor.getSession().setMode("ace/mode/" + language);
+    ui.codeEditor.getSession().setMode("ace/mode/" + language);
 
     saveAndEval();
   }
-
-
-  function exportSession() {
-    var session = {
-      "input" : inputArea.val(),
-      "code" : codeEditor.getValue(),
-      "language" : languageSelect.val(),
-      "html" : htmlEditor.getValue()
-    };
-
-    // TODO: escape the session for printing ...
-    return session;
-  }
-
-
-  function newSession() {
-    // TODO: get session name
-  }
-
-
-
-  window.exportSession = exportSession;
-
-
 
 
 });
