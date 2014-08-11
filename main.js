@@ -110,7 +110,9 @@ $(document).ready(function() {
     htmlContainer : $("#html-container"),
     languageSelect : $("#language-select"),
     closeWelcomeBtn : $("#close-welcome-btn"),
-    newSessionBtn : $("#new-session-btn")
+    newSessionBtn : $("#new-session-btn"),
+    addScriptBtn : $("#add-script-btn"),
+    addScriptInput : $("#add-script-input")
   };
   ui.editors = [ui.codeEditor, ui.htmlEditor];
 
@@ -128,6 +130,14 @@ $(document).ready(function() {
 
   function setupUI() {
     // ui.newSessionBtn.click(newSession);
+
+    ui.addScriptBtn.click(function() {
+      var url = ui.addScriptInput.val();
+      // TODO
+      // ensure that requirejs/amd modules are loaded properly?
+      $.getScript(url);
+    })
+
 
     if (localStorage.getItem("fumblerWelcomeWasClosed")) {
       ui.closeWelcomeBtn.parent().hide();
@@ -232,8 +242,10 @@ $(document).ready(function() {
     ui.htmlEditor.setValue(currentSession.html);
 
     _.invoke(ui.editors, "clearSelection");
+    _.invoke(ui.editors, onChange);
 
     saveAndEval();
+    renderHTML()
   }
 
   function saveAndEval() {
